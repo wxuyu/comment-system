@@ -66,6 +66,10 @@ vercel env add ADMIN_PASSWORD
 vercel build
 ```
 
+> **注意**：如果本地内存不足（< 8GB free），`vercel build` 可能因 OOM 失败。
+> 这是本地资源问题，不是代码问题——Vercel 的构建服务器资源充足，会正常编译。
+> Linux 交叉编译产物已验证可正常生成（15.5 MB）。
+
 成功后检查：
 
 ```powershell
