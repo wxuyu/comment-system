@@ -1,14 +1,12 @@
 ﻿{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd web && pnpm install && pnpm build",
   "outputDirectory": "web/dist",
   "functions": {
-    "api/**/*": {
-      "runtime": "@vercel/rust@3.0.3",
-      "maxDuration": 30
+    "api/**/*.rs": {
+      "runtime": "vercel-rust@4.0.6"
     }
   },
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "web/index.html" }
   ]
 }
