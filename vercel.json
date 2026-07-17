@@ -2,9 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd web && pnpm install && pnpm build",
   "outputDirectory": "web/dist",
-  "framework": null,
+  "functions": {
+    "api/**/*": { "runtime": "@vercel/rust@3.0.3", "maxDuration": 30 }
+  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
