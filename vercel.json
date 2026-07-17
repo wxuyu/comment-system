@@ -1,0 +1,8 @@
+{
+  "buildCommand": "cargo build --release --bin comment-server && cp target/release/comment-server .",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/comment-server" },
+    { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/(.*)", "dest": "/static/index.html" }
+  ]
+}
