@@ -1,8 +1,8 @@
 {
-  "buildCommand": "cargo build --release --bin comment-server && cp target/release/comment-server .",
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/comment-server" },
-    { "src": "/static/(.*)", "dest": "/static/$1" },
-    { "src": "/(.*)", "dest": "/static/index.html" }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd client && npm install && npm run build",
+  "outputDirectory": "client/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" }
   ]
 }

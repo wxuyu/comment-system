@@ -110,6 +110,17 @@ pub struct CreateCommentRequest {
     pub email: String,
     pub website: Option<String>,
     pub content: String,
+    /// 验证码会话 ID（math / image 验证码必填）
+    #[serde(default)]
+    pub captcha_id: Option<String>,
+    /// 验证码答案（math / image 验证码必填）
+    #[serde(default)]
+    pub captcha_answer: Option<String>,
+    /// Cloudflare Turnstile token（启用了 Turnstile 时必填）
+    #[serde(default)]
+    pub turnstile_token: Option<String>,
+    /// 兼容旧版字段：单一 captcha token（推荐用上面的分别传）
+    #[serde(default)]
     pub captcha_token: Option<String>,
 }
 

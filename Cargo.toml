@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["core", "server", "cli"]
+exclude = ["api"]
 
 [workspace.package]
 version = "0.1.0"
@@ -18,3 +19,28 @@ anyhow = "1"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Vercel serverless function (root package — official @vercel/rust runtime)
+[package]
+name = "comment-system-api"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "comment-system-api"
+path = "api/index.rs"
+
+[dependencies]
+comment-server = { path = "server" }
+comment-core = { path = "core" }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+vercel_runtime = "=2.4.0"
+axum = { version = "0.8" }
+tower = "0.5"
+
+# Patch vercel_runtime 2.4.0 to fix missing `std::env` import (upstream crate bug)
+[patch.crates-io]
+vercel_runtime = { path = "vendor/vercel_runtime" }

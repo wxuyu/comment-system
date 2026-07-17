@@ -6,6 +6,12 @@ mod auth;
 mod routes;
 mod middleware;
 mod spam;
+mod mailer;
+mod captcha;
+mod oauth;
+mod admin_ui;
+mod cache;
+mod storage;
 
 use std::net::SocketAddr;
 use tower_http::cors::{CorsLayer, Any};
@@ -28,15 +34,44 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("配置加载完成, 监听地址: {}:{}", config.server_host, config.server_port);
 
     // 初始化数据库
-    let pool = db::init_pool(&config.database_url).await?;
-    db::run_migrations(&pool).await?;
-    db::ensure_admin(&pool, &config).await?;
+    let app_db = db::AppDb::init(&config).await?;
+    db::run_migrations(&app_db).await?;
+    db::ensure_admin(&app_db, &config).await?;
     tracing::info!("数据库初始化完成");
 
-    // 构建应用状态
-    let state = routes::AppState::new(pool, config.clone());
+    // 邮件服务
+    let mailer = mailer::Mailer::new(std::sync::Arc::new(config.clone()));
+    if mailer.is_configured() {
+        tracing::info!("SMTP 已配置，发件人: {}", config.smtp_from);
+    } else {
+        tracing::info!("SMTP 未配置，邮件功能将跳过");
+    }
 
-    // CORS 配置
+    // OAuth state store（Upstash 或内存）
+    let upstash = cache::Upstash::from_env();
+    let oauth_state = cache::OAuthStateStore::new(upstash.clone());
+    if let Some(u) = &upstash {
+        if u.is_configured() {
+            tracing::info!("Upstash Redis 已配置，OAuth state 将持久化");
+        }
+    }
+
+    // Blob storage
+    let blob = storage::BlobStorage::from_env();
+    if blob.is_some() {
+        tracing::info!("Vercel Blob 已配置");
+    }
+
+    // 构建应用状态
+    let state = routes::AppState::new(
+        app_db,
+        config.clone(),
+        mailer,
+        oauth_state,
+        blob,
+    );
+
+    // CORS
     let _cors = if config.allowed_origins == "*" {
         CorsLayer::permissive()
     } else {
@@ -47,10 +82,10 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // 构建路由
-    let app = routes::create_router(state)
+    let app = routes::build_router(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
-        .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10MB
+        .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
         .layer(CompressionLayer::new());
 
     // 启动服务

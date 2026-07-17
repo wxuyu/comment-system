@@ -21,15 +21,22 @@ pub struct AppConfig {
     pub captcha_type: String,
     pub turnstile_site_key: Option<String>,
     pub turnstile_secret_key: Option<String>,
+    /// Vercel 公共 URL（用于 OAuth 回调）
+    pub public_url: String,
 }
 
 impl AppConfig {
     pub fn from_env() -> anyhow::Result<Self> {
+        // 本地 vs 远程数据库
+        let database_url = env::var("DATABASE_URL")
+            .or_else(|_| env::var("TURSO_DATABASE_URL"))
+            .unwrap_or_else(|_| "sqlite:./data/comments.db?mode=rwc".into());
+
         Ok(Self {
-            database_url: env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "sqlite:./data/comments.db?mode=rwc".into()),
+            database_url,
             server_host: env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".into()),
-            server_port: env::var("SERVER_PORT")
+            server_port: env::var("PORT")
+                .or_else(|_| env::var("SERVER_PORT"))
                 .unwrap_or_else(|_| "3080".into())
                 .parse()
                 .unwrap_or(3080),
@@ -50,6 +57,9 @@ impl AppConfig {
             captcha_type: env::var("CAPTCHA_TYPE").unwrap_or_else(|_| "turnstile".into()),
             turnstile_site_key: env::var("TURNSTILE_SITE_KEY").ok(),
             turnstile_secret_key: env::var("TURNSTILE_SECRET_KEY").ok(),
+            public_url: env::var("PUBLIC_URL")
+                .or_else(|_| env::var("VERCEL_PROJECT_PRODUCTION_URL").map(|u| format!("https://{}", u)))
+                .unwrap_or_else(|_| "http://localhost:3080".into()),
         })
     }
 }

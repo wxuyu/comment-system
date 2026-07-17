@@ -1,5 +1,7 @@
 //! 评论系统 CLI 管理工具
 
+mod oauth_ext;
+
 use clap::{Parser, Subcommand};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use tabled::{Table, Tabled, settings::Style};
@@ -29,6 +31,12 @@ enum Commands {
     /// 管理管理员
     #[command(subcommand)]
     Admin(AdminCmd),
+    /// 管理 OAuth 客户端
+    #[command(subcommand)]
+    Oauth(oauth_ext::OAuthCmd),
+    /// 邮件通知管理
+    #[command(subcommand)]
+    Notify(oauth_ext::NotifyCmd),
     /// 导出数据
     Export,
     /// 导入数据
@@ -104,6 +112,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Comment(cmd) => cmd_comment(&pool, cmd).await?,
         Commands::Site(cmd) => cmd_site(&pool, cmd).await?,
         Commands::Admin(cmd) => cmd_admin(&pool, cmd).await?,
+        Commands::Oauth(cmd) => oauth_ext::run_oauth(&pool, cmd).await?,
+        Commands::Notify(cmd) => oauth_ext::run_notify(&pool, cmd).await?,
         Commands::Export => cmd_export().await?,
         Commands::Import { path } => cmd_import(&pool, &path).await?,
     }
@@ -117,13 +127,17 @@ async fn cmd_stats(pool: &SqlitePool) -> anyhow::Result<()> {
     let pending: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM comments WHERE status='pending'").fetch_one(pool).await?;
     let pages: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM pages").fetch_one(pool).await?;
     let sites: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM sites").fetch_one(pool).await?;
+    let subs: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM email_subscriptions").fetch_one(pool).await?;
+    let oauths: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM oauth_accounts").fetch_one(pool).await?;
 
     println!("======== 评论系统统计 ========");
-    println!("总评论数:   {}", total.0);
-    println!("已通过:     {}", approved.0);
-    println!("待审核:     {}", pending.0);
-    println!("页面数:     {}", pages.0);
-    println!("站点数:     {}", sites.0);
+    println!("总评论数:    {}", total.0);
+    println!("已通过:      {}", approved.0);
+    println!("待审核:      {}", pending.0);
+    println!("页面数:      {}", pages.0);
+    println!("站点数:      {}", sites.0);
+    println!("邮件订阅:    {}", subs.0);
+    println!("OAuth 绑定:  {}", oauths.0);
     println!("===============================");
 
     Ok(())

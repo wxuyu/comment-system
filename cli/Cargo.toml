@@ -19,3 +19,4 @@ argon2 = "0.5"
 clap = { version = "4", features = ["derive", "env"] }
 rand = "0.8"
 tabled = "0.16"
+lettre = { version = "0.11", features = ["tokio1-native-tls", "builder"] }

@@ -1,0 +1,28 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# Node
+node_modules/
+client/dist/
+
+# Vercel
+.vercel/
+
+# Local data
+data/
+*.db
+*.db-*
+
+# Env
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build logs
+build*.log
+progress-*.md
