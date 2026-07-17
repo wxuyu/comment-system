@@ -1,4 +1,0 @@
-# Required by @vercel/rust 1.3.0 builder — an empty [build] table is mandatory.
-# The builder reads .cargo/config.toml and accesses cargoBuildConfiguration?.build.target
-# which crashes if [build] table is missing.
-[build]

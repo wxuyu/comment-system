@@ -1,28 +1,24 @@
-# Rust
+﻿# Rust
 /target
 **/*.rs.bk
-Cargo.lock.bak
+api/target
 
-# Node
+# Node / frontend
 node_modules/
-client/dist/
+web/node_modules/
+web/dist/
+dist/
 
-# Vercel
-.vercel/
-
-# Local data
-data/
-*.db
-*.db-*
-
-# Env
+# Env & secrets
 .env
 .env.local
+
+# Data (local sqlite)
+data/
+
+# Logs
+*.log
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Build logs
-build*.log
-progress-*.md

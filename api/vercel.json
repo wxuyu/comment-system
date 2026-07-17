@@ -1,0 +1,9 @@
+{
+  $schema: https://openapi.vercel.sh/vercel.json,
+  functions: {
+    api/target/release/handler: {
+      runtime: @vercel/rust@3.0.3,
+      maxDuration: 30
+    }
+  }
+}

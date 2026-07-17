@@ -1,129 +1,121 @@
-# 💬 Comment System
+# BlogComment_Rust
 
-开箱即用的评论系统 —— 可嵌入任何博客、网站或 Web 应用。
+Artalk 等价实现：Rust (Axum + libSQL) 后端 + Vue3 + TypeScript + SCSS 前端，部署到 Vercel。
 
-## ✨ 特性
+## 技术栈
 
-| 分类 | 功能 |
-|------|------|
-| **评论** | Markdown 支持、嵌套回复、投票、排序、搜索、置顶 |
-| **管理** | 评论审核、内容检测、垃圾拦截、多站点隔离 |
-| **体验** | 夜间模式、多语言（中/英/日/韩）、IP 属地、自动保存草稿 |
-| **安全** | 验证码、频率限制、JWT 认证、内容过滤 |
-| **扩展** | 图片上传、浏览量统计、邮件通知、Webhook 推送 |
-| **运维** | CLI 工具、SQLite 零配置、一键部署、数据迁移 |
+- **后端**：Rust / Axum 0.7 / libSQL (Turso) / jsonwebtoken / bcrypt / pulldown-cmark
+- **前端**：Vue 3 / TypeScript / Vite / SCSS / marked
+- **数据库**：libSQL (本地文件 data/artalk.db 或 Turso 远程)
+- **部署**：Vercel (Rust Serverless Function + 静态前端)
 
-## 🚀 快速开始
-
-### 1. 启动服务器
-
-```bash
-# 克隆 / 下载项目
-cd comment-system
-
-# 编译并运行
-cargo run --release --bin comment-server
-
-# 或使用环境变量
-DATABASE_URL=sqlite:./data/comments.db cargo run --release
-```
-
-服务器默认运行在 `http://localhost:3080`
-
-### 2. 嵌入前端到网站
-
-```html
-<!-- 引入 CSS -->
-<link rel="stylesheet" href="http://localhost:3080/static/comment-widget.css">
-
-<!-- 放置容器 -->
-<div id="comments" data-comment-widget="http://localhost:3080/api/v1" data-site-id="1"></div>
-
-<!-- 引入 JS -->
-<script src="http://localhost:3080/static/comment-widget.js"></script>
-```
-
-或者通过 NPM 引入：
-
-```javascript
-import { CommentWidget } from 'comment-widget';
-
-new CommentWidget('#comments', {
-  apiBase: '/api/v1',
-  siteId: 1,
-  pageUrl: window.location.pathname,
-  darkMode: false,
-  locale: 'zh-CN',
-}).init();
-```
-
-### 3. CLI 管理
-
-```bash
-# 查看统计
-cms stats
-
-# 列出评论
-cms comment list
-
-# 审核评论
-cms comment moderate 1 approve
-
-# 创建站点
-cms site create "我的博客" "blog.example.com"
-```
-
-## 📦 项目结构
+## 目录结构
 
 ```
-comment-system/
-├── core/           # 共享类型与领域模型
-├── server/         # Rust Axum 后端
+BlogComment_Rust/
+├── api/                 # Rust 后端 (Vercel 函数)
+│   ├── Cargo.toml
+│   ├── vercel.json      # Rust 函数配置
 │   ├── src/
-│   │   ├── main.rs
-│   │   ├── config.rs       # 配置管理
-│   │   ├── db.rs           # 数据库初始化
-│   │   ├── auth.rs         # JWT 认证
-│   │   ├── middleware.rs   # 中间件
-│   │   ├── spam.rs         # 垃圾检测
-│   │   └── routes/         # API 路由
-│   │       ├── comments.rs # 评论 CRUD + 投票
-│   │       ├── admin.rs    # 管理员接口
-│   │       ├── pages.rs    # 页面管理
-│   │       ├── sites.rs    # 站点管理
-│   │       └── uploads.rs  # 文件上传
-│   └── migrations/         # SQL 迁移脚本
-├── client/         # TypeScript 前端组件
+│   │   ├── main.rs      # 入口 (监听 PORT / BIND_ADDR)
+│   │   ├── lib.rs       # create_app / router
+│   │   ├── config.rs    # 配置 + JWT Claims
+│   │   ├── db.rs        # libSQL pool + migrations
+│   │   ├── models.rs    # 数据实体
+│   │   ├── auth.rs      # JWT 鉴权 + 中间件
+│   │   ├── service.rs   # DAO 层 (CRUD / 嵌套树 / PV / 统计)
+│   │   ├── handlers.rs  # HTTP handlers
+│   │   └── error.rs     # AppError
+│   └── build.sh
+├── web/                 # Vue3 前端
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── index.html
 │   └── src/
-│       ├── index.ts        # 入口
-│       ├── api.ts          # API 客户端
-│       ├── widget.ts       # UI 组件
-│       ├── i18n.ts         # 国际化
-│       └── style.css       # 样式
-└── cli/            # 命令行管理工具
-    └── src/main.rs
+│       ├── main.ts, App.vue, api.ts, types.ts, env.d.ts
+│       ├── components/  (CommentList / CommentItem / CommentEditor / AdminPanel)
+│       ├── composables/ (useAuth)
+│       └── styles/      (main.scss / variables.scss)
+├── vercel.json          # 项目根配置 (构建 web + rewrite)
+├── .env.example
+└── Cargo.toml           # workspace
 ```
 
-## 🔧 环境变量
+## 本地运行
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `DATABASE_URL` | SQLite 路径 | `sqlite:./data/comments.db?mode=rwc` |
-| `SERVER_HOST` | 监听地址 | `0.0.0.0` |
-| `SERVER_PORT` | 监听端口 | `3080` |
-| `JWT_SECRET` | JWT 密钥 | 必须修改 |
-| `ADMIN_PASSWORD` | 初始管理员密码 | `admin123` |
-| `ALLOWED_ORIGINS` | CORS 来源 | `*` |
-| `SMTP_HOST` | SMTP 服务器 | 可选 |
-| `CAPTCHA_ENABLED` | 启用验证码 | `false` |
+### 后端
 
-## 🛠️ 技术栈
+```
+cd api
+export DATABASE_URL="file:./data/artalk.db"
+export APP_KEY="your-secret-key-min-16-chars"
+export SITE_DEFAULT="Default Site"
+cargo run
+# 监听 http://localhost:3000
+```
 
-- **后端**: Rust + Axum + SQLx + SQLite
-- **前端**: TypeScript + esbuild（零依赖）
-- **认证**: JWT + Argon2
-- **CLI**: Clap + Tabled
+### 前端
 
-## 📄 许可证
+```
+cd web
+pnpm install   # 或 npm install
+pnpm dev       # 开发服务器 http://localhost:5173
+```
 
-MIT
+注意：pnpm 11 默认不执行依赖的构建脚本（esbuild 等）。若安装后构建失败，
+手动执行 node node_modules/.pnpm/esbuild@*/node_modules/esbuild/install.js 后再 pnpm build。
+
+## 环境变量
+
+| 变量 | 说明 | 默认 |
+|------|------|------|
+| DATABASE_URL | libSQL 连接 (file: 或 https: libsql://...) | file:./data/artalk.db |
+| APP_KEY | JWT 签名密钥 (>=16 字符) | 无 (必填) |
+| SITE_DEFAULT | 默认站点名 | Default |
+| PORT / BIND_ADDR | 监听地址 (Vercel 注入 PORT) | 3000 |
+
+## API 概览 (前缀 /api/v2)
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /conf | 公开配置 |
+| POST/GET | /comments | 创建 / 列表 (嵌套树) |
+| GET | /comments/:id | 单条评论 |
+| PUT/DELETE | /comments/:id | 管理员编辑 / 删除 |
+| GET/POST | /votes | 投票查询 / 投票 |
+| GET | /pages | 页面列表 |
+| POST | /pages/pv | PV 自增 |
+| GET | /stat | 统计 |
+| GET/POST | /notifies | 通知列表 / 标记已读 |
+| POST | /auth/login | 邮箱登录 |
+| POST | /auth/register | 邮箱注册 |
+| GET | /user/info | 当前用户 |
+| GET | /version | 版本 |
+
+注：社交登录 / SSO / 上传 / 验证码 / 邮件通知等 Artalk 高级特性当前未实现，
+已实现核心评论、嵌套回复、投票、PV、统计、通知、JWT 鉴权、管理端删除。
+
+## 部署到 Vercel
+
+1. 推送到 Git 仓库并导入 Vercel
+2. 项目设置：
+   - Build Command: cd web && pnpm install && pnpm build
+   - Output Directory: web/dist
+3. 环境变量：设置 DATABASE_URL (Turso libsql:// URL + token)、APP_KEY、SITE_DEFAULT
+4. api/ 目录作为 Rust Serverless Function 自动构建 (Rust builder)
+5. vercel.json 已配置 /api/* -> Rust 函数，其余 -> SPA
+
+### Turso 数据库
+
+```
+turso db create blogcomment
+turso db url blogcomment      # -> libsql://xxx.turso.io
+turso db tokens create blogcomment
+# DATABASE_URL="libsql://xxx.turso.io?authToken=TOKEN"
+```
+
+## 已知限制
+
+- 单文件 SQLite 在 Vercel Serverless 多实例下不共享，生产请用 Turso
+- 管理端仅实现删除 / 基础统计，未实现 Artalk 全量后台
+- 防垃圾 / 验证码 / 邮件未接入
