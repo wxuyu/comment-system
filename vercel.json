@@ -3,7 +3,10 @@
   "buildCommand": "cd web && pnpm install && pnpm build",
   "outputDirectory": "web/dist",
   "functions": {
-    "api/**/*": { "runtime": "@vercel/rust@3.0.3", "maxDuration": 30 }
+    "api/**/*": {
+      "runtime": "@vercel/rust@3.0.3",
+      "maxDuration": 30
+    }
   },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
