@@ -1,12 +1,7 @@
 ﻿{
-  "buildCommand": "cd web && pnpm install && pnpm build",
-  "outputDirectory": "web/dist",
   "functions": {
     "api/**/*.rs": {
       "runtime": "vercel-rust@4.0.6"
     }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "web/index.html" }
-  ]
+  }
 }
