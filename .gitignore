@@ -4,6 +4,7 @@ Cargo.lock
 .env
 data/
 *.db
+*.py
 
 # build/tool logs
 *.log

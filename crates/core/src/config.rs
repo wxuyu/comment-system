@@ -19,6 +19,9 @@ fn default_app_key_len() -> usize {
 fn default_body_limit() -> i64 {
     100
 }
+fn default_gravatar() -> String {
+    "https://www.gravatar.com/avatar/".into()
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -56,6 +59,10 @@ pub struct Config {
     #[serde(default)]
     pub anti_spam: AntiSpamConfig,
     pub log: LogConfig,
+
+    /// Gravatar mirror URL (e.g. https://www.gravatar.com/avatar/)
+    #[serde(default = "default_gravatar")]
+    pub gravatar_mirror: String,
 }
 
 impl Default for Config {
@@ -83,6 +90,7 @@ impl Default for Config {
             ip_region: IpRegionConfig::default(),
             anti_spam: AntiSpamConfig::default(),
             log: LogConfig::default(),
+            gravatar_mirror: default_gravatar(),
         }
     }
 }

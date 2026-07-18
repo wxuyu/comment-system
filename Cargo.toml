@@ -53,8 +53,8 @@ tokio = { version = "1", features = ["full"] }
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6", features = ["cors", "trace"] }
 
-# Database (SQLx). Postgres is the serverless-default.
-sqlx = { version = "0.8", features = ["runtime-tokio", "macros", "chrono", "json", "postgres", "sqlite"] }
+# Database (libSQL). Supports Turso remote + local SQLite file.
+# libsql crate is a native Rust client for libSQL/Turso.
 chrono = { version = "0.4", features = ["serde"] }
 
 # Auth / crypto

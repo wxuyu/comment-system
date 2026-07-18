@@ -1,9 +1,9 @@
 //! Application state shared across handlers. Mirrors `core.App`.
-//! Holds config, DB pool, an in-process cache, and service handles.
+//! Holds config, libSQL database handle, an in-process cache, and service handles.
 use std::sync::Arc;
 
 use artalk_core::config::Config;
-use sqlx::PgPool;
+use libsql::Database;
 
 use crate::cache::Cache;
 use crate::services::Services;
@@ -12,13 +12,13 @@ use crate::services::Services;
 #[derive(Clone)]
 pub struct App {
     pub conf: Arc<Config>,
-    pub db: PgPool,
+    pub db: Arc<Database>,
     pub cache: Cache,
     pub services: Services,
 }
 
 impl App {
-    pub fn new(conf: Config, db: PgPool) -> Self {
+    pub fn new(conf: Config, db: Arc<Database>) -> Self {
         let conf = Arc::new(conf);
         let cache = if conf.cache.enabled {
             Cache::new(Some(&conf.cache))

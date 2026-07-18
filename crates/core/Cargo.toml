@@ -19,7 +19,6 @@ md-5 = { workspace = true }
 hex = { workspace = true }
 rand = { workspace = true }
 comrak = { workspace = true }
-sqlx = { workspace = true }
 once_cell = { workspace = true }
 
 [dev-dependencies]

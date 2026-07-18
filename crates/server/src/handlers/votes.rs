@@ -2,7 +2,6 @@
 //! GET /votes/:target_name/:target_id  (status)
 //! POST /votes/:target_name/:target_id/:choice  (create/toggle)
 //! POST /votes/sync  (sync counts)
-use artalk_core::entity::{Comment, Page};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -174,10 +173,7 @@ async fn create_choice(
 async fn sync(State(app): State<App>) -> impl IntoResponse {
     let dao = Dao::new(app.db.clone(), app.cache.clone(), app.conf());
     // Sync comment vote counts.
-    let comments = sqlx::query_as::<_, Comment>("SELECT * FROM comments")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
+    let comments = dao.list_all_comments().await;
     for c in comments {
         let (up, down) = dao.get_vote_num_up_down("comment", c.id).await;
         let mut cc = c;
@@ -185,10 +181,7 @@ async fn sync(State(app): State<App>) -> impl IntoResponse {
         cc.vote_down = down;
         let _ = dao.update_comment(&cc).await;
     }
-    let pages = sqlx::query_as::<_, Page>("SELECT * FROM pages")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
+    let pages = dao.list_all_pages().await;
     for pg in pages {
         let (up, down) = dao.get_vote_num_up_down("page", pg.id).await;
         let mut pp = pg;

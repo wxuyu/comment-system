@@ -2,7 +2,6 @@
 //! GET /user/info, PUT /user/info, POST /user/login, GET /user/status
 //! GET /admin/users, POST /admin/users, PUT /admin/users/:id, DELETE /admin/users/:id
 use artalk_core::crypto::{check_password, set_password_encrypt, sign_user_token};
-use artalk_core::entity::User;
 use artalk_core::validate::is_valid_email;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -144,10 +143,7 @@ async fn status(State(_app): State<App>, OptionalUser(user): OptionalUser) -> im
 
 async fn list(State(app): State<App>, CurrentUser(_admin): CurrentUser) -> impl IntoResponse {
     let dao = Dao::new(app.db.clone(), app.cache.clone(), app.conf());
-    let users = sqlx::query_as::<_, User>("SELECT * FROM users")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
+    let users = dao.list_all_users().await;
     let mut out = Vec::with_capacity(users.len());
     for u in &users {
         out.push(dao.cook_user_for_admin(u).await);

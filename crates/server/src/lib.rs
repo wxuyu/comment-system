@@ -16,14 +16,15 @@ pub mod services;
 
 use crate::app::App;
 use crate::bootstrap::load_config;
+use std::sync::Arc;
 
 /// Build the application state from the environment. Mirrors `core.Bootstrap`.
 pub async fn build_app() -> Result<App, Box<dyn std::error::Error>> {
     let conf = load_config();
-    let pool = bootstrap::connect_db(&conf).await?;
-    bootstrap::run_migrations(&pool).await?;
-    bootstrap::ensure_default_site(&pool, &conf.site_default).await?;
-    Ok(App::new(conf, pool))
+    let db = bootstrap::connect_db().await?;
+    bootstrap::run_migrations(&db).await?;
+    bootstrap::ensure_default_site(&db, &conf.site_default).await?;
+    Ok(App::new(conf, Arc::new(db)))
 }
 
 /// Expose the router builder for the function to call.

@@ -3,7 +3,7 @@
 //! POST /auth/merge/apply, /auth/merge/check
 //! GET/POST /auth/social/:provider, /auth/sso/exchange
 use artalk_core::crypto::{check_password, set_password_encrypt, sign_user_token};
-use artalk_core::entity::{User, UserEmailVerify};
+use artalk_core::entity::User;
 use artalk_core::validate::is_valid_email;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -236,30 +236,11 @@ async fn sso_exchange(
 // 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 helpers 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
 
 async fn check_email_code(dao: &Dao, email: &str, code: &str) -> bool {
-    let row = sqlx::query_as::<_, UserEmailVerify>(
-        "SELECT * FROM user_email_verify WHERE email = $1 ORDER BY id DESC LIMIT 1",
-    )
-    .bind(email)
-    .fetch_optional(&dao.db)
-    .await
-    .ok()
-    .flatten();
-    match row {
-        Some(v) => v.code == code,
-        None => false,
-    }
+    dao.check_email_code(email, code).await
 }
 
-async fn store_email_code(dao: &Dao, email: &str, code: &str) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "INSERT INTO user_email_verify (created_at, updated_at, user_id, email, code, try_count) \
-         VALUES (NOW(), NOW(), 0, $1, $2, 0)",
-    )
-    .bind(email)
-    .bind(code)
-    .execute(&dao.db)
-    .await?;
-    Ok(())
+async fn store_email_code(dao: &Dao, email: &str, code: &str) -> Result<(), libsql::Error> {
+    dao.store_email_code(email, code).await
 }
 
 fn bad(status: StatusCode, msg: &str) -> axum::response::Response {

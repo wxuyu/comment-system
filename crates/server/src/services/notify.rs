@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use artalk_core::config::Config;
 use artalk_core::entity::{Comment, Notify, User};
-use sqlx::PgPool;
+use libsql::Database;
 
 use crate::cache::Cache;
 use crate::dao::Dao;
@@ -14,7 +14,7 @@ use crate::services::EmailService;
 #[derive(Clone)]
 pub struct NotifyService {
     conf: Arc<Config>,
-    db: PgPool,
+    db: Arc<Database>,
     cache: Cache,
     email: Arc<EmailService>,
 }
@@ -22,13 +22,13 @@ pub struct NotifyService {
 #[derive(Debug, thiserror::Error)]
 pub enum NotifyError {
     #[error("db error: {0}")]
-    Db(#[from] sqlx::Error),
+    Db(#[from] libsql::Error),
     #[error("email error: {0}")]
     Email(String),
 }
 
 impl NotifyService {
-    pub fn new(conf: Arc<Config>, db: PgPool, cache: Cache) -> Self {
+    pub fn new(conf: Arc<Config>, db: Arc<Database>, cache: Cache) -> Self {
         let email = Arc::new(EmailService::new(conf.clone()));
         Self {
             conf,

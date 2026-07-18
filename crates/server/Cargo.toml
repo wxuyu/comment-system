@@ -14,7 +14,7 @@ axum = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
-sqlx = { workspace = true }
+libsql = "0.3"
 validator = { workspace = true }
 url = { workspace = true }
 bcrypt = { workspace = true }

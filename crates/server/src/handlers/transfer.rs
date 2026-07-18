@@ -2,7 +2,7 @@
 //! POST /transfer/export  -> returns a JSON dump of all data
 //! POST /transfer/import  -> loads a JSON dump
 //! POST /transfer/upload  -> import an uploaded file (stub)
-use artalk_core::entity::{Comment, Notify, Page, Site, User, Vote};
+use artalk_core::entity::{Comment, Page, Site, User};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -23,30 +23,12 @@ pub fn router() -> Router<App> {
 
 async fn export(State(app): State<App>, CurrentUser(_admin): CurrentUser) -> impl IntoResponse {
     let dao = Dao::new(app.db.clone(), app.cache.clone(), app.conf());
-    let comments = sqlx::query_as::<_, Comment>("SELECT * FROM comments")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
-    let users = sqlx::query_as::<_, User>("SELECT * FROM users")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
-    let pages = sqlx::query_as::<_, Page>("SELECT * FROM pages")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
-    let sites = sqlx::query_as::<_, Site>("SELECT * FROM sites")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
-    let votes = sqlx::query_as::<_, Vote>("SELECT * FROM votes")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
-    let notifies = sqlx::query_as::<_, Notify>("SELECT * FROM notifies")
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
+    let comments = dao.list_all_comments().await;
+    let users = dao.list_all_users().await;
+    let pages = dao.list_all_pages().await;
+    let sites = dao.find_all_sites().await;
+    let votes = dao.list_all_votes().await;
+    let notifies = dao.list_all_notifies().await;
     (
         StatusCode::OK,
         Json(json!({

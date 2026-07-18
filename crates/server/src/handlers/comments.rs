@@ -335,95 +335,69 @@ async fn delete(
 // 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 scope fetchers 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
 
 async fn fetch_scope_page(dao: &Dao, user: &User, p: &ParamsCommentList) -> Vec<Comment> {
-    let mut q = "SELECT * FROM comments WHERE page_key = $1 AND site_name = $2".to_string();
-    let mut params: Vec<String> = vec![p.page_key.clone(), p.site_name.clone()];
+    let mut rows = dao.list_comments_by_page(&p.page_key, &p.site_name).await;
+    // Filter in Rust (simpler than dynamic SQL)
     if !user.is_admin {
-        q.push_str(" AND is_pending = false");
+        rows.retain(|c| !c.is_pending);
     }
     if !p.search.is_empty() {
-        q.push_str(" AND content LIKE $3");
-        params.push(format!("%{}%", p.search));
+        let q = p.search.to_lowercase();
+        rows.retain(|c| c.content.to_lowercase().contains(&q));
     }
-    let rows = if params.len() == 3 {
-        sqlx::query_as::<_, Comment>(&q)
-            .bind(&params[0])
-            .bind(&params[1])
-            .bind(&params[2])
-            .fetch_all(&dao.db)
-            .await
-            .unwrap_or_default()
-    } else {
-        sqlx::query_as::<_, Comment>(&q)
-            .bind(&params[0])
-            .bind(&params[1])
-            .fetch_all(&dao.db)
-            .await
-            .unwrap_or_default()
-    };
     rows
 }
 
 async fn fetch_scope_user(dao: &Dao, user: &User, p: &ParamsCommentList) -> Vec<Comment> {
-    let mut q = "SELECT * FROM comments WHERE 1=1".to_string();
-    match p.r#type.as_str() {
+    let mut rows = match p.r#type.as_str() {
         "mine" => {
             if user.is_empty() {
                 return vec![];
             }
-            q.push_str(" AND user_id = $1");
+            dao.list_comments_by_user(user.id).await
         }
         "pending" => {
-            q.push_str(" AND is_pending = true");
-            if !user.is_admin {
-                // non-admin sees only their own pending
-                q.push_str(" AND user_id = $1");
+            let all = dao
+                .list_comments_by_user(if !user.is_admin { user.id } else { 0 })
+                .await;
+            if user.is_admin {
+                // For admin, get all pending from all users
+                dao.list_all_comments()
+                    .await
+                    .into_iter()
+                    .filter(|c| c.is_pending)
+                    .collect()
+            } else {
+                all.into_iter().filter(|c| c.is_pending).collect()
             }
         }
         "mentions" => {
-            // mention: content contains @name (best-effort)
-            q.push_str(" AND content LIKE $1");
+            // All comments, filter by mention in content
+            dao.list_all_comments().await
         }
         _ => {
             if !user.is_empty() {
-                q.push_str(" AND user_id = $1");
+                dao.list_comments_by_user(user.id).await
+            } else {
+                vec![]
             }
         }
-    }
+    };
     if !p.search.is_empty() {
-        q.push_str(" AND content LIKE $2");
+        let q = p.search.to_lowercase();
+        rows.retain(|c| c.content.to_lowercase().contains(&q));
     }
-    let rows = sqlx::query_as::<_, Comment>(&q)
-        .bind(if user.is_empty() { 0 } else { user.id })
-        .fetch_all(&dao.db)
-        .await
-        .unwrap_or_default();
     rows
 }
 
 async fn fetch_scope_site(dao: &Dao, user: &User, p: &ParamsCommentList) -> Vec<Comment> {
-    let mut q = "SELECT * FROM comments WHERE site_name = $1".to_string();
-    let mut params: Vec<String> = vec![p.site_name.clone()];
+    let mut rows = dao.list_comments_by_site(&p.site_name).await;
     if !user.is_admin {
-        q.push_str(" AND is_pending = false");
+        rows.retain(|c| !c.is_pending);
     }
     if !p.search.is_empty() {
-        q.push_str(" AND content LIKE $2");
-        params.push(format!("%{}%", p.search));
+        let q = p.search.to_lowercase();
+        rows.retain(|c| c.content.to_lowercase().contains(&q));
     }
-    let rows = if params.len() == 2 {
-        sqlx::query_as::<_, Comment>(&q)
-            .bind(&params[0])
-            .bind(&params[1])
-            .fetch_all(&dao.db)
-            .await
-            .unwrap_or_default()
-    } else {
-        sqlx::query_as::<_, Comment>(&q)
-            .bind(&params[0])
-            .fetch_all(&dao.db)
-            .await
-            .unwrap_or_default()
-    };
     rows
 }
 

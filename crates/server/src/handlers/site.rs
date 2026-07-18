@@ -1,5 +1,4 @@
 //! Site handlers. Mirrors server/handler/site_*.go + page_*.go + notify_*.go.
-use artalk_core::entity::Page;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -139,38 +138,17 @@ async fn page_list(
     axum::extract::Query(p): axum::extract::Query<ParamsPageList>,
 ) -> impl IntoResponse {
     let dao = Dao::new(app.db.clone(), app.cache.clone(), app.conf());
-    let mut q = "SELECT * FROM pages".to_string();
-    let mut params: Vec<String> = vec![];
-    if !p.site_name.is_empty() {
-        q.push_str(" WHERE site_name = $1");
-        params.push(p.site_name.clone());
-    }
-    if !p.search.is_empty() {
-        if params.is_empty() {
-            q.push_str(" WHERE title LIKE $1 OR key LIKE $1");
-        } else {
-            q.push_str(" AND title LIKE $2 OR key LIKE $2");
-        }
-        params.push(format!("%{}%", p.search));
-    }
-    let pages = if params.is_empty() {
-        sqlx::query_as::<_, Page>(&q)
-            .fetch_all(&dao.db)
-            .await
-            .unwrap_or_default()
-    } else if params.len() == 1 {
-        sqlx::query_as::<_, Page>(&q)
-            .bind(&params[0])
-            .fetch_all(&dao.db)
-            .await
-            .unwrap_or_default()
+    let pages = if !p.site_name.is_empty() {
+        dao.list_pages_filtered(&p.site_name, &p.search).await
     } else {
-        sqlx::query_as::<_, Page>(&q)
-            .bind(&params[0])
-            .bind(&params[1])
-            .fetch_all(&dao.db)
-            .await
-            .unwrap_or_default()
+        let mut all = dao.list_all_pages().await;
+        if !p.search.is_empty() {
+            let q = p.search.to_lowercase();
+            all.retain(|pg| {
+                pg.title.to_lowercase().contains(&q) || pg.key.to_lowercase().contains(&q)
+            });
+        }
+        all
     };
     let mut out = Vec::with_capacity(pages.len());
     for pg in &pages {
@@ -327,15 +305,7 @@ async fn notify_read(
     let dao = Dao::new(app.db.clone(), app.cache.clone(), app.conf());
     // Mark notify(s) matching key as read (best-effort: key==id or "all").
     if let Ok(id) = p.notify_key.parse::<i64>() {
-        let mut n = sqlx::query_as::<_, artalk_core::entity::Notify>(
-            "SELECT * FROM notifies WHERE id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&dao.db)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_default();
+        let mut n = dao.find_notify(id).await;
         if !n.is_empty() {
             n.is_read = true;
             let _ = dao.update_notify(&n).await;

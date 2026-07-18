@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use artalk_core::config::Config;
-use sqlx::PgPool;
+use libsql::Database;
 
 use crate::cache::Cache;
 
@@ -18,7 +18,7 @@ pub struct Services {
 }
 
 impl Services {
-    pub fn new(conf: Arc<Config>, db: PgPool, cache: Cache) -> Self {
+    pub fn new(conf: Arc<Config>, db: Arc<Database>, cache: Cache) -> Self {
         Self {
             email: Arc::new(EmailService::new(conf.clone())),
             notify: Arc::new(NotifyService::new(conf.clone(), db.clone(), cache.clone())),

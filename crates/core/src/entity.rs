@@ -5,10 +5,9 @@
 
 use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 
 /// A comment row. Mirrors `entity.Comment` (gorm.Model => id/created_at/updated_at/deleted_at).
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Comment {
     pub id: i64,
     pub created_at: NaiveDateTime,
@@ -17,34 +16,18 @@ pub struct Comment {
     pub deleted_at: Option<NaiveDateTime>,
 
     pub content: String,
-
-    #[sqlx(rename = "page_key")]
     pub page_key: String,
-    #[sqlx(rename = "site_name")]
     pub site_name: String,
-
-    #[sqlx(rename = "user_id")]
     pub user_id: i64,
-    #[sqlx(rename = "is_verified")]
     pub is_verified: bool,
     pub ua: String,
     pub ip: String,
-
-    #[sqlx(rename = "rid")]
     pub rid: i64,
-    #[sqlx(rename = "is_collapsed")]
     pub is_collapsed: bool,
-    #[sqlx(rename = "is_pending")]
     pub is_pending: bool,
-    #[sqlx(rename = "is_pinned")]
     pub is_pinned: bool,
-
-    #[sqlx(rename = "vote_up")]
     pub vote_up: i64,
-    #[sqlx(rename = "vote_down")]
     pub vote_down: i64,
-
-    #[sqlx(rename = "root_id")]
     pub root_id: i64,
 }
 
@@ -84,7 +67,7 @@ impl Comment {
 
 const COMMON_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
-/// Mirrors `entity.CookedComment` 鈥?the JSON shape returned by the API.
+/// Mirrors `entity.CookedComment` 閳?the JSON shape returned by the API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CookedComment {
     pub id: i64,
@@ -132,7 +115,7 @@ pub struct CookedComment {
 }
 
 /// Mirrors `entity.User` (gorm.Model => id/created_at/updated_at/deleted_at).
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
     pub created_at: NaiveDateTime,
@@ -144,21 +127,13 @@ pub struct User {
     pub email: String,
     pub link: String,
     pub password: String,
-    #[sqlx(rename = "badge_name")]
     pub badge_name: String,
-    #[sqlx(rename = "badge_color")]
     pub badge_color: String,
-    #[sqlx(rename = "last_ip")]
     pub last_ip: String,
-    #[sqlx(rename = "last_ua")]
     pub last_ua: String,
-    #[sqlx(rename = "is_admin")]
     pub is_admin: bool,
-    #[sqlx(rename = "receive_email")]
     pub receive_email: bool,
-    #[sqlx(rename = "token_valid_from")]
     pub token_valid_from: Option<NaiveDateTime>,
-    #[sqlx(rename = "is_in_conf")]
     pub is_in_conf: bool,
 }
 
@@ -224,26 +199,20 @@ pub struct CookedUserForAdmin {
 }
 
 /// Mirrors `entity.Page`.
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Page {
     pub id: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     #[serde(default)]
     pub deleted_at: Option<NaiveDateTime>,
-
-    #[sqlx(rename = "key")]
     pub key: String,
     pub title: String,
-    #[sqlx(rename = "admin_only")]
     pub admin_only: bool,
-    #[sqlx(rename = "site_name")]
     pub site_name: String,
     #[serde(skip)]
     pub accessible_url: String,
-    #[sqlx(rename = "vote_up")]
     pub vote_up: i64,
-    #[sqlx(rename = "vote_down")]
     pub vote_down: i64,
     pub pv: i64,
 }
@@ -295,7 +264,7 @@ pub struct CookedPage {
 }
 
 /// Mirrors `entity.Site`.
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Site {
     pub id: i64,
     pub created_at: NaiveDateTime,
@@ -333,24 +302,18 @@ pub struct CookedSite {
 }
 
 /// Mirrors `entity.Notify`.
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Notify {
     pub id: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     #[serde(default)]
     pub deleted_at: Option<NaiveDateTime>,
-
-    #[sqlx(rename = "user_id")]
     pub user_id: i64,
-    #[sqlx(rename = "comment_id")]
     pub comment_id: i64,
-    #[sqlx(rename = "is_read")]
     pub is_read: bool,
-    #[sqlx(rename = "is_emailed")]
     pub is_emailed: bool,
     pub key: String,
-    #[sqlx(rename = "read_link")]
     pub read_link: String,
 }
 
@@ -388,21 +351,17 @@ pub struct CookedNotify {
 }
 
 /// Mirrors `entity.Vote`.
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Vote {
     pub id: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     #[serde(default)]
     pub deleted_at: Option<NaiveDateTime>,
-
-    #[sqlx(rename = "target_id")]
     pub target_id: i64,
-    #[sqlx(rename = "user_id")]
     pub user_id: i64,
     pub ip: String,
     pub ua: String,
-    #[sqlx(rename = "type")]
     pub vote_type: String,
 }
 
@@ -423,7 +382,7 @@ impl Default for Vote {
 }
 
 /// Mirrors `entity.AuthIdentity`.
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthIdentity {
     pub id: i64,
     pub created_at: NaiveDateTime,
@@ -433,9 +392,7 @@ pub struct AuthIdentity {
 
     pub provider: String,
     pub token: String,
-    #[sqlx(rename = "remote_uid")]
     pub remote_uid: String,
-    #[sqlx(rename = "user_id")]
     pub user_id: i64,
     pub name: String,
     pub email: String,
@@ -459,19 +416,16 @@ impl Default for AuthIdentity {
 }
 
 /// Mirrors `entity.UserEmailVerify` (email verification codes).
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserEmailVerify {
     pub id: i64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     #[serde(default)]
     pub deleted_at: Option<NaiveDateTime>,
-
-    #[sqlx(rename = "user_id")]
     pub user_id: i64,
     pub email: String,
     pub code: String,
-    #[sqlx(rename = "try_count")]
     pub try_count: i32,
 }
 
@@ -491,7 +445,7 @@ impl Default for UserEmailVerify {
 }
 
 /// Mirrors `entity.Artran` (artransfer import/export rows).
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Artran {
     pub id: i64,
     pub created_at: NaiveDateTime,
