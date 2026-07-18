@@ -37,28 +37,44 @@ pub fn load_config() -> Config {
     conf
 }
 
-/// Connect to the database. Prefers Turso (TURSO_URL + TURSO_AUTH_TOKEN),
+/// Connect to the database. Prefers Turso (TURSO_URL + DATABASE_TOKEN),
 /// falling back to local SQLite (DATABASE_URL or default file path).
+/// Also handles the case where DATABASE_URL starts with "libsql://" —
+/// treats it as a remote Turso URL (uses DATABASE_TOKEN for auth).
 pub async fn connect_db() -> Result<Database, Box<dyn std::error::Error>> {
     let turso_url = std::env::var("TURSO_URL").ok();
-    let turso_token = std::env::var("TURSO_AUTH_TOKEN").ok();
+    let db_token = std::env::var("DATABASE_TOKEN").ok();
+    let db_url = std::env::var("DATABASE_URL").ok().filter(|u| !u.is_empty());
 
-    if let (Some(url), Some(token)) = (turso_url, turso_token) {
+    // Case 1: Explicit Turso env vars
+    if let (Some(url), Some(token)) = (turso_url.as_ref(), db_token.as_ref()) {
         if !url.is_empty() && !token.is_empty() {
-            tracing::info!("connecting to Turso: {}", url);
-            let db = Builder::new_remote(url, token).build().await?;
+            tracing::info!("connecting to Turso (TURSO_URL): {}", url);
+            let db = Builder::new_remote(url.clone(), token.clone())
+                .build()
+                .await?;
             return Ok(db);
         }
     }
 
-    // Fallback: local SQLite file
-    let db_url = std::env::var("DATABASE_URL")
-        .ok()
-        .filter(|u| !u.is_empty())
-        .unwrap_or_else(|| "file:./data/artalk.db".to_string());
+    // Case 2: DATABASE_URL starts with libsql:// — treat as Turso remote
+    if let Some(ref url) = db_url {
+        if url.starts_with("libsql://") {
+            let token = db_token.unwrap_or_default().trim().to_string();
+            if token.is_empty() {
+                return Err("DATABASE_URL is a libsql:// URL but DATABASE_TOKEN is not set".into());
+            }
+            tracing::info!("connecting to Turso (DATABASE_URL): {}", url);
+            let db = Builder::new_remote(url.clone(), token).build().await?;
+            return Ok(db);
+        }
+    }
+
+    // Case 3: Local SQLite file
+    let local_path = db_url.unwrap_or_else(|| "file:./data/artalk.db".to_string());
 
     // Strip "file:" prefix for local builder if present
-    let path = db_url.strip_prefix("file:").unwrap_or(&db_url);
+    let path = local_path.strip_prefix("file:").unwrap_or(&local_path);
     // Ensure parent dir exists
     if let Some(parent) = std::path::Path::new(path).parent() {
         if !parent.as_os_str().is_empty() {
