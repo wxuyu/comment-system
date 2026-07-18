@@ -1,0 +1,3 @@
+# Required empty [build] table so the workspace resolves cleanly under
+# Vercel's @vercel/rust build environment.
+[build]

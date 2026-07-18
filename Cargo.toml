@@ -1,0 +1,100 @@
+# ── Hybrid manifest: BOTH [workspace] AND [package]. ─────────────────────────
+# The [package] half owns the Vercel serverless function as a [[bin]] whose
+# source is api/api.rs. Vercel's official @vercel/rust runtime auto-detects a
+# root Cargo.toml and runs its DEFAULT build command:
+#
+#     cargo build --release --bin comment-server && cp target/release/comment-server .
+#
+# Therefore the deployable binary MUST be named `comment-server` (the runtime
+# hard-codes that name). No separate api/Cargo.toml is used.
+#
+# Dependency arrows point one way only: core <- server; api(root bin) -> server.
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/server",
+]
+
+[package]
+name = "artalk-rs"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+
+# Vercel's @vercel/rust runtime builds exactly this binary.
+[[bin]]
+name = "comment-server"
+path = "api/api.rs"
+
+# Local development runner (cargo run --bin serve) — not used by Vercel.
+[[bin]]
+name = "serve"
+path = "src/bin/serve.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde_json = { workspace = true, features = ["raw_value"] }
+axum = { workspace = true }
+artalk-server = { path = "crates/server" }
+
+# vercel_runtime only compiles on Linux (the Vercel build target). On other
+# platforms the `comment-server` bin uses a stub main so the workspace still
+# builds locally (cargo run --bin serve works on macOS/Windows).
+[target.'cfg(target_os = "linux")'.dependencies]
+vercel_runtime = "=2.0.0"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+# Axum is HTTP-agnostic enough to host the routing logic; the Vercel function
+# adapts requests into the axum Router. This keeps all routing/extractors in
+# `server` (unit-testable) while the function file stays a thin adapter.
+axum = { version = "0.8", features = ["macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# Database (SQLx). Postgres is the serverless-default.
+sqlx = { version = "0.8", features = ["runtime-tokio", "macros", "chrono", "json", "postgres", "sqlite"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Auth / crypto
+jsonwebtoken = "9"
+bcrypt = "0.15"
+rand = "0.8"
+sha2 = "0.10"
+md-5 = "0.10"
+hex = "0.4"
+
+# Markdown rendering (mirrors Go goldmark + bluemonday sanitise)
+comrak = { version = "0.31", default-features = false }
+
+# Config (YAML + env, mirrors koanf).
+config = { version = "0.15", default-features = false, features = ["yaml"] }
+
+# Email (SMTP interface)
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1-rustls-tls", "builder"] }
+
+# Validation / misc
+validator = { version = "0.20", features = ["derive"] }
+url = "2"
+regex = "1"
+once_cell = "1"
+futures = "0.3"
+async-trait = "0.1"
+
+[workspace.package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["artalk-rs"]
+repository = "https://github.com/artalkjs/artalk-rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
