@@ -34,17 +34,12 @@ name = "serve"
 path = "src/bin/serve.rs"
 
 [dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
 serde_json = { workspace = true, features = ["raw_value"] }
 axum = { workspace = true }
 artalk-server = { path = "crates/server" }
 
-# vercel_runtime only compiles on Linux (the Vercel build target). On other
-# platforms the `comment-server` bin uses a stub main so the workspace still
-# builds locally (cargo run --bin serve works on macOS/Windows).
-[target.'cfg(target_os = "linux")'.dependencies]
-vercel_runtime = "=2.0.0"
-
+tracing = "0.1"
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

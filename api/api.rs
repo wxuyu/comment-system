@@ -1,61 +1,33 @@
 //! Vercel serverless function entry point.
 //!
-//! On Linux (the Vercel build target) this uses the official `@vercel/rust`
-//! runtime (`vercel_runtime` 2.x) together with its `axum::VercelLayer`
-//! adapter: the layer converts Vercel's `(AppState, Request)` into an axum
-//! `Request<Body>` and converts the axum response back into Vercel's
-//! `Response<ResponseBody>`. All business logic lives in `artalk-server` /
-//! `artalk-core`; this file is a thin adapter.
+//! `@vercel/rust` v2 (the current runtime) builds this binary with its default
+//! command `cargo build --release --bin comment-server` and then RUNS it as a
+//! long-lived HTTP server. Vercel injects the listen port via the `PORT`
+//! environment variable and routes requests to it. So this binary is just a
+//! plain axum server — no `vercel_runtime` / Lambda handler is involved.
 //!
-//! On non-Linux platforms (e.g. local Windows dev) `vercel_runtime` cannot
-//! compile, so we provide a stub `main` that points to `cargo run --bin serve`.
+//! All business logic lives in `artalk-server` / `artalk-core`; this file only
+//! wires the router onto a listener.
 
-#[cfg(target_os = "linux")]
-mod vercel_main {
-    use artalk_server::{build_app, router};
-    use tower::{ServiceBuilder, ServiceExt};
-    use vercel_runtime::axum::VercelLayer;
-    use vercel_runtime::{run, service_fn, AppState, Error, Request};
+use std::net::SocketAddr;
 
-    pub async fn run_vercel() -> Result<(), Error> {
-        let app_state = build_app().await?;
-        let axum_router = router(app_state);
-        let svc = ServiceBuilder::new()
-            .layer(VercelLayer::new())
-            .service(axum_router);
+use artalk_server::{build_app, router};
 
-        run(service_fn(move |(state, req): (AppState, Request)| {
-            let mut svc = svc.clone();
-            async move {
-                ServiceExt::<(AppState, Request)>::ready(&mut svc)
-                    .await
-                    .map_err(|e| Box::new(e) as Error)?;
-                svc.call((state, req))
-                    .await
-                    .map_err(|e| Box::new(e) as Error)
-            }
-        }))
-        .await
-    }
-}
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let app_state = build_app().await?;
+    let app = router(app_state);
 
-#[cfg(target_os = "linux")]
-fn main() -> Result<(), vercel_runtime::Error> {
-    // A Tokio runtime is provided by vercel_runtime's `run`; we still need a
-    // #[tokio::main]-style entry. vercel_runtime's `run` blocks on the runtime
-    // it manages, so we call it directly.
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(vercel_main::run_vercel())
-}
+    // Vercel provides the port via $PORT; default to 3000 locally.
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(3000);
+    let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let addr: SocketAddr = format!("{host}:{port}").parse()?;
 
-#[cfg(not(target_os = "linux"))]
-fn main() {
-    eprintln!(
-        "This `api` binary is the Vercel serverless entry and only builds on Linux.\n\
-         For local development run: cargo run --bin serve"
-    );
-    std::process::exit(1);
+    tracing::info!("artalk-rs listening on {addr}");
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
 }
