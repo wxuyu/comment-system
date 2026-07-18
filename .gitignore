@@ -1,24 +1,6 @@
-﻿# Rust
 /target
 **/*.rs.bk
-api/target
-
-# Node / frontend
-node_modules/
-web/node_modules/
-web/dist/
-dist/
-
-# Env & secrets
+Cargo.lock
 .env
-.env.local
-
-# Data (local sqlite)
 data/
-
-# Logs
-*.log
-
-# OS
-.DS_Store
-Thumbs.db
+*.db

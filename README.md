@@ -1,121 +1,89 @@
-# BlogComment_Rust
+# artalk-rs
 
-Artalk 等价实现：Rust (Axum + libSQL) 后端 + Vue3 + TypeScript + SCSS 前端，部署到 Vercel。
+A from-scratch **Rust** re-implementation of the [Artalk v2](https://github.com/artalkjs/artalk)
+self-hosted comment backend, deployed as a **Vercel serverless function** (the official
+`@vercel/rust` runtime). It reproduces the `/api/v2` REST surface (comments, votes, auth,
+users, sites, pages, notify, conf, stat, captcha, upload, transfer, cache) backed by
+**PostgreSQL** via `sqlx`.
 
-## 技术栈
-
-- **后端**：Rust / Axum 0.7 / libSQL (Turso) / jsonwebtoken / bcrypt / pulldown-cmark
-- **前端**：Vue 3 / TypeScript / Vite / SCSS / marked
-- **数据库**：libSQL (本地文件 data/artalk.db 或 Turso 远程)
-- **部署**：Vercel (Rust Serverless Function + 静态前端)
-
-## 目录结构
+Architecture follows the one-way dependency rule required by the
+`rust-webapp-rollout` skill:
 
 ```
-BlogComment_Rust/
-├── api/                 # Rust 后端 (Vercel 函数)
-│   ├── Cargo.toml
-│   ├── vercel.json      # Rust 函数配置
-│   ├── src/
-│   │   ├── main.rs      # 入口 (监听 PORT / BIND_ADDR)
-│   │   ├── lib.rs       # create_app / router
-│   │   ├── config.rs    # 配置 + JWT Claims
-│   │   ├── db.rs        # libSQL pool + migrations
-│   │   ├── models.rs    # 数据实体
-│   │   ├── auth.rs      # JWT 鉴权 + 中间件
-│   │   ├── service.rs   # DAO 层 (CRUD / 嵌套树 / PV / 统计)
-│   │   ├── handlers.rs  # HTTP handlers
-│   │   └── error.rs     # AppError
-│   └── build.sh
-├── web/                 # Vue3 前端
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── index.html
-│   └── src/
-│       ├── main.ts, App.vue, api.ts, types.ts, env.d.ts
-│       ├── components/  (CommentList / CommentItem / CommentEditor / AdminPanel)
-│       ├── composables/ (useAuth)
-│       └── styles/      (main.scss / variables.scss)
-├── vercel.json          # 项目根配置 (构建 web + rewrite)
-├── .env.example
-└── Cargo.toml           # workspace
+artalk-core   (pure: entities, config, crypto, markdown, validate, cook)   no I/O
+   ▲
+artalk-server (DAO, services, handlers, router, bootstrap)                  I/O
+   ▲
+root [[bin]] api  →  Vercel serverless function (vercel_runtime, Linux only)
+root [[bin]] serve → local dev server (axum + hyper, any platform)
 ```
 
-## 本地运行
+## Build & verify (local, any OS)
 
-### 后端
-
-```
-cd api
-export DATABASE_URL="file:./data/artalk.db"
-export APP_KEY="your-secret-key-min-16-chars"
-export SITE_DEFAULT="Default Site"
-cargo run
-# 监听 http://localhost:3000
+```bash
+cargo fmt --check
+cargo clippy --workspace -- -D warnings
+cargo test --workspace
+cargo build --workspace          # builds core + server + serve + api(stub on non-Linux)
 ```
 
-### 前端
+> `vercel_runtime` only compiles on **Linux** (the Vercel build target). On macOS/Windows
+> the `api` bin is a stub that prints a hint; use `cargo run --bin serve` for local testing.
 
-```
-cd web
-pnpm install   # 或 npm install
-pnpm dev       # 开发服务器 http://localhost:5173
-```
+## Run locally
 
-注意：pnpm 11 默认不执行依赖的构建脚本（esbuild 等）。若安装后构建失败，
-手动执行 node node_modules/.pnpm/esbuild@*/node_modules/esbuild/install.js 后再 pnpm build。
+Requires a reachable PostgreSQL. Point the DSN at it, then:
 
-## 环境变量
-
-| 变量 | 说明 | 默认 |
-|------|------|------|
-| DATABASE_URL | libSQL 连接 (file: 或 https: libsql://...) | file:./data/artalk.db |
-| APP_KEY | JWT 签名密钥 (>=16 字符) | 无 (必填) |
-| SITE_DEFAULT | 默认站点名 | Default |
-| PORT / BIND_ADDR | 监听地址 (Vercel 注入 PORT) | 3000 |
-
-## API 概览 (前缀 /api/v2)
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /conf | 公开配置 |
-| POST/GET | /comments | 创建 / 列表 (嵌套树) |
-| GET | /comments/:id | 单条评论 |
-| PUT/DELETE | /comments/:id | 管理员编辑 / 删除 |
-| GET/POST | /votes | 投票查询 / 投票 |
-| GET | /pages | 页面列表 |
-| POST | /pages/pv | PV 自增 |
-| GET | /stat | 统计 |
-| GET/POST | /notifies | 通知列表 / 标记已读 |
-| POST | /auth/login | 邮箱登录 |
-| POST | /auth/register | 邮箱注册 |
-| GET | /user/info | 当前用户 |
-| GET | /version | 版本 |
-
-注：社交登录 / SSO / 上传 / 验证码 / 邮件通知等 Artalk 高级特性当前未实现，
-已实现核心评论、嵌套回复、投票、PV、统计、通知、JWT 鉴权、管理端删除。
-
-## 部署到 Vercel
-
-1. 推送到 Git 仓库并导入 Vercel
-2. 项目设置：
-   - Build Command: cd web && pnpm install && pnpm build
-   - Output Directory: web/dist
-3. 环境变量：设置 DATABASE_URL (Turso libsql:// URL + token)、APP_KEY、SITE_DEFAULT
-4. api/ 目录作为 Rust Serverless Function 自动构建 (Rust builder)
-5. vercel.json 已配置 /api/* -> Rust 函数，其余 -> SPA
-
-### Turso 数据库
-
-```
-turso db create blogcomment
-turso db url blogcomment      # -> libsql://xxx.turso.io
-turso db tokens create blogcomment
-# DATABASE_URL="libsql://xxx.turso.io?authToken=TOKEN"
+```bash
+export ATK_DB__DSN=postgres://user:pass@127.0.0.1:5432/artalk
+export ATK_APP__KEY=$(openssl rand -hex 32)
+cargo run --bin serve
+# → http://127.0.0.1:3000/api/v2/...
 ```
 
-## 已知限制
+The schema is created automatically on boot (`bootstrap::run_migrations`, idempotent
+`CREATE TABLE IF NOT EXISTS`). A default site row is seeded if none exists.
 
-- 单文件 SQLite 在 Vercel Serverless 多实例下不共享，生产请用 Turso
-- 管理端仅实现删除 / 基础统计，未实现 Artalk 全量后台
-- 防垃圾 / 验证码 / 邮件未接入
+## Deploy to Vercel
+
+1. Push this directory to a Git repo and import it into Vercel.
+2. Set the environment variables from `.env.example` (at minimum `ATK_DB__DSN` and
+   `ATK_APP__KEY`). Provide a managed Postgres (Neon / Supabase / RDS) DSN.
+3. Vercel's `@vercel/rust` runtime builds the `api` binary; the function is served under
+   `/api`. The router is mounted under both `/api/v2` and `/v2` so the Artalk frontend
+   works regardless of the exact function path.
+
+```bash
+vercel --prod
+```
+
+## Scope notes (vs the original Go backend)
+
+Faithfully reproduced: comment CRUD + threading, votes (up/down toggle by IP), email/
+password auth + JWT, user/admin CRUD, site/page CRUD, notify (reply + pending), conf/stat/
+version, image captcha (rendered in-memory), transfer export/import, cache flush, markdown
+rendering + sanitising, bcrypt/md5 password handling, email + reply notifications.
+
+Adapted for serverless:
+- **20-provider social OAuth** — routes accept the provider and return the configured
+  callback; full OAuth token exchange is stubbed (needs a session/secret store).
+- **File upload** — validates config and returns the public path; wiring to an object
+  store (S3/R2) is left as a deploy-time config (`conf.img_upload`).
+- **Anti-spam** — keyword filtering is live; cloud providers (Akismet/Tencent/Aliyun)
+  expose the check interface but are gated to "unavailable" until wired to SDKs.
+- **IP region** — disabled by default (no bundled `xdb` in serverless); returns "".
+- **Admin CLI (cobra)** — not applicable; admin actions are API endpoints.
+
+## Project layout
+
+```
+artalk-rs/
+├─ Cargo.toml                 # hybrid [workspace] + [package] with [[bin]] api
+├─ vercel.json                # minimal, no functions block
+├─ .cargo/config.toml         # guardrail: empty [build] table for @vercel/rust
+├─ api/api.rs                 # Vercel entry (Linux) using vercel_runtime + VercelLayer
+├─ src/bin/serve.rs           # local dev server
+└─ crates/
+   ├─ core/  (entities, config, crypto, markdown, validate, cook)
+   └─ server/ (dao, services, handlers/*, router, bootstrap, cache, app)
+```
